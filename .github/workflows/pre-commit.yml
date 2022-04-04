@@ -1,0 +1,52 @@
+name: 'pre-commit'
+description: 'Efficiently runs pre-commit hooks for a python project, caching data for pre-commit itself, as well as pip and mypy'
+on:
+  workflow_call:
+    secrets:
+      ACCESS_TOKEN:
+        description: 'A token passed used to checkout any submodules, if present'
+        required: false
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    env:
+      MYPY_CACHE_DIR: /home/runner/.cache/mypy  # tell mypy not to use default location for cache so that we can persist it
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        submodules: recursive
+
+    - name: setup
+      uses: actions/setup-python@v2
+
+    - name: cache pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: ${{ runner.os }}-pip-
+
+    - name: cache pre-commit
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pre-commit
+        key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: ${{ runner.os }}-pre-commit-
+
+    - name: cache mypy
+      uses: actions/cache@v3
+      with:
+        path:
+          ~/.cache/mypy
+        key: ${{ runner.os }}-mypy-v1
+
+    - name: run pre-commit
+      run: |
+        set -x
+        ls
+        mkdir -p ~/.cache/mypy
+        pip install pre-commit
+        pre-commit run --all-files
