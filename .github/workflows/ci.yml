@@ -17,3 +17,5 @@ jobs:
 
     - name: Run Action Linting
       uses: cfy9/action-linting@main
+      with:
+        files: pre-commit/action.yml
