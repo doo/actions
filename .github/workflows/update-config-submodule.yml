@@ -1,0 +1,33 @@
+name: Update config submodule
+
+on:
+  workflow_call:
+    secrets:
+      checkout-token:
+        description: 'A token passed used to checkout any submodules, if present'
+        required: true
+
+jobs:
+  update-config-repo:
+    name: Update config repo
+    runs-on: ubuntu-latest
+    # Only trigger job when PR is triggered by dependabot
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.checkout-token }}
+          submodules: recursive
+
+      - name: setup
+        uses: actions/setup-python@v2
+
+      - name: update
+        run: python3 config/install.py
+
+      - name: commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'install / update files from config submodule'
