@@ -31,3 +31,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: 'install / update files from config submodule'
+          commit_username: 'dependabot[bot]'
