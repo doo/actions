@@ -34,3 +34,15 @@ jobs:
           commit_author: 'dependabot[bot] <support@github.com>'
           commit_user_name: 'dependabot[bot]'
           commit_user_email: 'support@github.com'
+
+  label_as_breaking_change:
+    name: Label as breaking change
+    if: ${{ contains(github.event.pull_request.body, 'breaking change') || contains(github.event.pull_request.body, 'breaking-change') || contains(github.event.pull_request.body, 'breaking_change')}} # not case sensitive
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: breaking-change
