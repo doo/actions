@@ -37,4 +37,4 @@ runs:
       ls
       mkdir -p ~/.cache/mypy
       pip install pre-commit
-      pre-commit run --all-files
+      pre-commit run --all-files --show-diff-on-failure
