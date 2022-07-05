@@ -1,0 +1,30 @@
+name: 'pytest'
+description: 'This action efficiently runs pytest checks. It caches data for pip.'
+
+inputs:
+  runtime_arguments:
+    description: "arguments passed on to pytest"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+  - name: setup
+    uses: actions/setup-python@v2
+
+  - name: cache pip
+    uses: actions/cache@v3
+    with:
+      path: ~/.cache/pip
+      key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+      restore-keys: ${{ runner.os }}-pip-
+
+  - name: install dependencies
+    shell: bash
+    run: |
+      pip install -r requirements.txt
+      pip install pytest
+
+  - name: run pytest
+    shell: bash
+    run: pytest -s --full-trace ${{ inputs.runtime_arguments }}
