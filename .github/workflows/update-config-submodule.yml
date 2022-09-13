@@ -46,3 +46,15 @@ jobs:
       - uses: actions-ecosystem/action-add-labels@v1
         with:
           labels: breaking-change
+
+  label_as_take_action:
+    name: Label as take action
+    if: ${{ contains(github.event.pull_request.body, 'take action') || contains(github.event.pull_request.body, 'take-action') || contains(github.event.pull_request.body, 'take_action')}} # not case sensitive
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: take-action
