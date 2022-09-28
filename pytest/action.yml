@@ -9,10 +9,16 @@ inputs:
 runs:
   using: "composite"
   steps:
+  - name: Get python version
+    id: python_version
+    shell: bash
+    run: echo "::set-output name=version::$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\).*/\1/p' Makefile || echo 3.10)"
+
   - name: setup
-    uses: actions/setup-python@v2
+    uses: actions/setup-python@v4
     with:
       cache: 'pip' # caching pip dependencies
+      python-version: ${{ steps.python_version.outputs.version }}
 
   - name: install dependencies
     shell: bash
