@@ -17,15 +17,27 @@ runs:
   - name: setup
     uses: actions/setup-python@v4
     with:
-      cache: 'pip' # caching pip dependencies
       python-version: ${{ steps.python_version.outputs.version }}
+    
+  - name: Cache virtual environment
+    uses: actions/cache@v3
+    id: cache-venv
+    with:
+      path: ./.venv/
+      key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'setup.py', 'Makefile') }}
 
-  - name: install dependencies
+  - name: Make virtual environment with dependencies
+    if: steps.cache-venv.outputs.cache-hit != 'true'
     shell: bash
     run: |
+      pip install --upgrade pip
+      python -m venv ./.venv
+      source ./.venv/bin/activate
       pip install -r requirements.txt
       pip install pytest
 
   - name: run pytest
     shell: bash
-    run: pytest -s --full-trace ${{ inputs.runtime_arguments }}
+    run: |
+      source ./.venv/bin/activate
+      pytest -s --full-trace ${{ inputs.runtime_arguments }}
