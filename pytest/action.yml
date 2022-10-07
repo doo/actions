@@ -12,7 +12,7 @@ runs:
   - name: Get python version
     id: python_version
     shell: bash
-    run: echo "::set-output name=version::$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\).*/\1/p' Makefile || echo 3.10)"
+    run: echo "::set-output name=version::$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile || echo 3.10)"
 
   - name: setup
     uses: actions/setup-python@v4
