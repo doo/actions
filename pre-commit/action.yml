@@ -4,37 +4,65 @@ description: 'This action efficiently runs pre-commit checks. It caches data for
 runs:
   using: "composite"
   steps:
-  - name: setup
-    uses: actions/setup-python@v2
+  - name: Get python version
+    id: python_version
+    shell: bash
+    run: echo "version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile || echo 3.10)" >> $GITHUB_OUTPUT
 
-  - name: cache pip
-    uses: actions/cache@v3
+  - name: setup
+    uses: actions/setup-python@v4
     with:
-      path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-      restore-keys: ${{ runner.os }}-pip-
+      python-version: ${{ steps.python_version.outputs.version }}
+
+  - name: Cache virtual environment
+    uses: actions/cache@v3
+    id: cache-venv
+    with:
+      path: ./.venv/
+      key: ${{ runner.os }}-venv-${{ steps.python_version.outputs.version }}
+
+  - name: Make virtual environment with dependencies
+    if: steps.cache-venv.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      set -x
+      pip install --upgrade pip
+      python -m venv ./.venv
+      source ./.venv/bin/activate
+      pip install pre-commit
 
   - name: cache pre-commit
+    id: cache-pre-commit
     uses: actions/cache@v3
     with:
-      path: ~/.cache/pre-commit
-      key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      restore-keys: ${{ runner.os }}-pre-commit-
+      path: ./.cache/pre-commit
+      key: ${{ runner.os }}-pre-commit-${{ steps.python_version.outputs.version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+  - name: Make pre-commit hook environments
+    if: steps.cache-pre-commit.outputs.cache-hit != 'true'
+    shell: bash
+    env:
+      PRE_COMMIT_HOME: ./.cache/pre-commit  # tell pre-commit not to use default location for cache so that we can persist it
+    run: |
+      set -x
+      mkdir -p ./.cache/pre-commit
+      source ./.venv/bin/activate
+      pre-commit install --install-hooks
 
   - name: cache mypy
     uses: actions/cache@v3
     with:
       path:
-        ~/.cache/mypy
-      key: ${{ runner.os }}-mypy-v1
+        ./.cache/mypy
+      key: ${{ runner.os }}-mypy-${{ steps.python_version.outputs.version }}-v1
 
   - name: run pre-commit
     env:
-      MYPY_CACHE_DIR: /home/runner/.cache/mypy  # tell mypy not to use default location for cache so that we can persist it
+      MYPY_CACHE_DIR: ./.cache/mypy  # tell mypy not to use default location for cache so that we can persist it
+      PRE_COMMIT_HOME: ./.cache/pre-commit  # tell pre-commit not to use default location for cache so that we can persist it
     shell: bash
     run: |
       set -x
-      ls
-      mkdir -p ~/.cache/mypy
-      pip install pre-commit
+      mkdir -p ./.cache/mypy
+      source ./.venv/bin/activate
       pre-commit run --all-files --show-diff-on-failure
