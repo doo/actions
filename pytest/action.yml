@@ -12,7 +12,7 @@ runs:
   - name: Get python version
     id: python_version
     shell: bash
-    run: echo "::set-output name=version::$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile || echo 3.10)"
+    run: echo "version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile || echo 3.10)" >> $GITHUB_OUTPUT
 
   - name: setup
     uses: actions/setup-python@v4
@@ -24,7 +24,7 @@ runs:
     id: cache-venv
     with:
       path: ./.venv/
-      key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'setup.py', 'Makefile') }}
+      key: ${{ runner.os }}-${{ steps.python_version.outputs.version }}-venv-${{ hashFiles('requirements.txt', 'setup.py') }}
 
   - name: Make virtual environment with dependencies
     if: steps.cache-venv.outputs.cache-hit != 'true'
