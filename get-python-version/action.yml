@@ -1,0 +1,29 @@
+name: 'get-python-version'
+description: 'This action extracts the python version defined in a Makefile or defaults to a default version.'
+
+inputs:
+  default:
+    description: "python version to default to if not found in Makefile"
+    required: false
+    default: "3.10"
+
+outputs:
+  version:
+    description: "Extracted python version"
+    value: ${{ steps.python-version.outputs.version }}
+
+runs:
+  using: "composite"
+  steps:
+  - name: Get python version
+    id: python-version
+    shell: bash
+    # extract version from makefile if present, or fall back to default if not
+    run: |
+      export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true)
+      if [[ $version ]]; \
+      then echo "found python version $version"; \
+      else echo "using default version ${{ inputs.default }}"; \
+      export version=${{ inputs.default }}; \
+      fi
+      echo "version=$(echo $version)" >> $GITHUB_OUTPUT
