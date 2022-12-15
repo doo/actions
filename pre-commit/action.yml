@@ -7,6 +7,8 @@ runs:
   - name: Get python version
     id: python_version
     uses: doo/actions/get-python-version@main
+    with:
+      micro: true
 
   - name: setup
     uses: actions/setup-python@v4
