@@ -6,6 +6,10 @@ inputs:
     description: "python version to default to if not found in Makefile"
     required: false
     default: "3.10"
+  micro:
+    description: "whether to extract micro version (true, false)"
+    required: false
+    default: false
 
 outputs:
   version:
@@ -20,7 +24,10 @@ runs:
     shell: bash
     # extract version from makefile if present, or fall back to default if not
     run: |
-      export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true)
+      if ${{ inputs.micro }} ; \
+      then export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true); \
+      else export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true); \
+      fi
       if [[ $version ]]; \
       then echo "found python version $version"; \
       else echo "using default version ${{ inputs.default }}"; \
