@@ -19,18 +19,23 @@ outputs:
 runs:
   using: "composite"
   steps:
-  - name: Get python version
-    id: python-version
-    shell: bash
-    # extract version from makefile if present, or fall back to default if not
-    run: |
-      if ${{ inputs.micro }} ; \
-      then export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true); \
-      else export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true); \
-      fi
-      if [[ $version ]]; \
-      then echo "found python version $version"; \
-      else echo "using default version ${{ inputs.default }}"; \
-      export version=${{ inputs.default }}; \
-      fi
-      echo "version=$(echo $version)" >> $GITHUB_OUTPUT
+    - name: Get python version
+      id: python-version
+      shell: bash
+      # extract version from makefile if present, or fall back to default if not
+      run: |
+        if ${{ inputs.micro }}
+          then export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true)
+          if [[ ! $version ]]
+            then echo "no micro version found"
+          fi
+        fi
+        if [[ ! $version ]]
+          then export version=$(sed -n 's/^PYTHON_VERSION = \([0-9]\.[0-9]\{1,2\}\).*/\1/p' Makefile 2>1 || true)
+        fi
+        if [[ $version ]]
+          then echo "found python version $version"
+          else echo "using default version ${{ inputs.default }}"
+            export version=${{ inputs.default }}
+        fi
+        echo "version=$(echo $version)" >> $GITHUB_OUTPUT
