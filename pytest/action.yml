@@ -23,7 +23,7 @@ runs:
     id: cache-venv
     with:
       path: ./.venv/
-      key: ${{ runner.os }}-${{ steps.python_version.outputs.version }}-venv-${{ hashFiles('requirements.txt', 'setup.py') }}
+      key: ${{ runner.os }}-${{ steps.python_version.outputs.version }}-venv-${{ hashFiles('requirements.txt', 'setup.py') }}-v1
 
   - name: Make virtual environment with dependencies
     if: steps.cache-venv.outputs.cache-hit != 'true'
