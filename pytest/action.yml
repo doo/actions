@@ -5,6 +5,9 @@ inputs:
   runtime_arguments:
     description: "arguments passed on to pytest"
     required: false
+  ssh-private-key:
+    description: 'An ssh key used to checkout any private repos as part of dependency installation, if present'
+    required: false
 
 runs:
   using: "composite"
@@ -24,6 +27,11 @@ runs:
     with:
       path: ./.venv/
       key: ${{ runner.os }}-${{ steps.python_version.outputs.version }}-venv-${{ hashFiles('requirements.txt', 'setup.py') }}-v1
+
+  - uses: webfactory/ssh-agent@v0.7.0
+    if: inputs.ssh-private-key != ''
+    with:
+        ssh-private-key: ${{ inputs.ssh-private-key }}
 
   - name: Make virtual environment with dependencies
     if: steps.cache-venv.outputs.cache-hit != 'true'
