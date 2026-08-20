@@ -24,6 +24,20 @@ inputs:
       dependencies change - otherwise CI keeps reusing a stale venv with outdated dependencies.
     required: false
     default: ''
+  pylint-args:
+    description: >
+      Full CLI args (flags + target paths, e.g. '--disable=import-error src tests') for a
+      standalone `pylint` invocation, run as a separate step after the main pre-commit pass.
+      When set, pylint is also skipped from the main `pre-commit run --all-files` step via
+      SKIP=pylint.
+      This works around a pre-commit + pylint limitation: pre-commit's --all-files run (and any
+      run over a large flat list of files) passes pylint every file individually instead of
+      directories, which triggers a known astroid import-resolution bug that produces spurious
+      errors (e.g. no-name-in-module, undefined-variable) that don't occur when pylint is given
+      directories to recurse into itself.
+      Leave unset (default) to keep pylint running through the normal pre-commit hook, unaffected.
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -102,9 +116,19 @@ runs:
     env:
       MYPY_CACHE_DIR: ./.cache/mypy  # tell mypy not to use default location for cache so that we can persist it
       PRE_COMMIT_HOME: ./.cache/pre-commit  # tell pre-commit not to use default location for cache so that we can persist it
+      # skip pylint here when it'll be run separately below (see pylint-args description)
+      SKIP: ${{ inputs.pylint-args != '' && 'pylint' || '' }}
     shell: bash
     run: |
       set -x
       mkdir -p ./.cache/mypy
       source ./.venv/bin/activate
       pre-commit run --all-files --show-diff-on-failure
+
+  - name: run pylint directly over directories
+    if: inputs.pylint-args != ''
+    shell: bash
+    run: |
+      set -x
+      source ./.venv/bin/activate
+      pylint ${{ inputs.pylint-args }}
