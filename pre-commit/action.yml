@@ -1,9 +1,56 @@
 name: 'pre-commit'
 description: 'This action efficiently runs pre-commit checks. It caches data for pip, pre-commit, and mypy.'
 
+inputs:
+  install-project:
+    description: >
+      Whether to install the calling repo itself (editable install) plus its dev dependencies into
+      ./.venv before running pre-commit. Needed for hooks that use `language: system`
+      (e.g. mypy/pylint configured to see the real, installed dependency versions instead of an
+      isolated per-hook environment).
+      Defaults to 'false' to preserve existing behavior for repos that don't need it.
+    required: false
+    default: 'false'
+  install-project-command:
+    description: >
+      Command used to install the project when install-project is 'true'.
+      Override if your repo's dev/test extra is named differently.
+    required: false
+    default: ''
+  venv-cache-key-suffix:
+    description: >
+      Extra string folded into the venv cache key, e.g. hashFiles('setup.py', 'setup.cfg', 'requirements.txt').
+      Required whenever install-project is 'true', so the cached venv is invalidated when
+      dependencies change - otherwise CI keeps reusing a stale venv with outdated dependencies.
+    required: false
+    default: ''
+  pylint-args:
+    description: >
+      Full CLI args (flags + target paths, e.g. '--disable=import-error src tests') for a
+      standalone `pylint` invocation, run as a separate step after the main pre-commit pass.
+      When set, pylint is also skipped from the main `pre-commit run --all-files` step via
+      SKIP=pylint.
+      This works around a pre-commit + pylint limitation: pre-commit's --all-files run (and any
+      run over a large flat list of files) passes pylint every file individually instead of
+      directories, which triggers a known astroid import-resolution bug that produces spurious
+      errors (e.g. no-name-in-module, undefined-variable) that don't occur when pylint is given
+      directories to recurse into itself.
+      Leave unset (default) to keep pylint running through the normal pre-commit hook, unaffected.
+    required: false
+    default: ''
+
 runs:
   using: "composite"
   steps:
+  - name: Validate inputs
+    if: inputs.install-project == 'true' && (inputs.install-project-command == '' || inputs.venv-cache-key-suffix == '')
+    shell: bash
+    run: |
+      echo "::error::install-project is 'true' but install-project-command and/or venv-cache-key-suffix is empty."
+      echo "::error::install-project-command example: pip install -e \".[dev]\""
+      echo "::error::venv-cache-key-suffix example: \${{ hashFiles('setup.py', 'setup.cfg', 'requirements.txt') }}"
+      exit 1
+
   - name: Get python version
     id: python_version
     uses: doo/actions/get-python-version@main
@@ -20,7 +67,7 @@ runs:
     id: cache-venv
     with:
       path: ./.venv/
-      key: ${{ runner.os }}-venv-${{ steps.python_version.outputs.version }}
+      key: ${{ runner.os }}-venv-${{ steps.python_version.outputs.version }}-${{ inputs.venv-cache-key-suffix }}
 
   - name: Make virtual environment with dependencies
     if: steps.cache-venv.outputs.cache-hit != 'true'
@@ -31,6 +78,14 @@ runs:
       python -m venv ./.venv
       source ./.venv/bin/activate
       pip install pre-commit
+
+  - name: Install project (for language:system hooks)
+    if: inputs.install-project == 'true' && steps.cache-venv.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      set -x
+      source ./.venv/bin/activate
+      ${{ inputs.install-project-command }}
 
   - name: cache pre-commit
     id: cache-pre-commit
@@ -61,9 +116,19 @@ runs:
     env:
       MYPY_CACHE_DIR: ./.cache/mypy  # tell mypy not to use default location for cache so that we can persist it
       PRE_COMMIT_HOME: ./.cache/pre-commit  # tell pre-commit not to use default location for cache so that we can persist it
+      # skip pylint here when it'll be run separately below (see pylint-args description)
+      SKIP: ${{ inputs.pylint-args != '' && 'pylint' || '' }}
     shell: bash
     run: |
       set -x
       mkdir -p ./.cache/mypy
       source ./.venv/bin/activate
       pre-commit run --all-files --show-diff-on-failure
+
+  - name: run pylint directly over directories
+    if: inputs.pylint-args != ''
+    shell: bash
+    run: |
+      set -x
+      source ./.venv/bin/activate
+      pylint ${{ inputs.pylint-args }}
